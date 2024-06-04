@@ -112,3 +112,33 @@ def import_variables(file_name):
     except Exception as e:
         print(f"Error occurred while importing '{file_name}.py': {e}")
 
+
+def create_zero_tuple(n, T_zero):
+  """
+  Creates a tuple filled with n zero arrays.
+
+  Args:
+      n: The number of zero arrays to include in the tuple.
+
+  Returns:
+      A tuple containing n zero arrays.
+  """
+  zero_tuple = ()
+  for _ in range(n):
+    zero_tuple += (np.zeros(len(T_zero)),)  # Replace (...) with desired array shape
+
+  return zero_tuple
+
+def create_qdot_mat(qdot0, num_entries):
+  """
+  Creates a NumPy array by stacking the given Qdot0 array vertically num_entries times.
+
+  Args:
+      qdot0: The NumPy array to be stacked.
+      num_entries: The number of times to stack the Qdot0 array vertically.
+
+  Returns:
+      A NumPy array with the stacked Qdot0 arrays.
+  """
+  qdot_mat = np.vstack([qdot0 for _ in range(num_entries)])
+  return qdot_mat
