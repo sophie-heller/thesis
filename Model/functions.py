@@ -129,16 +129,19 @@ def create_zero_tuple(n, T_zero):
 
   return zero_tuple
 
-def create_qdot_mat(qdot0, num_entries):
+
+
+
+def create_input_mat(num_entries, vector):
   """
   Creates a NumPy array by stacking the given Qdot0 array vertically num_entries times.
 
   Args:
-      qdot0: The NumPy array to be stacked.
-      num_entries: The number of times to stack the Qdot0 array vertically.
+      num_entries: The number of times to stack the Qdot0 array vertically -> number of time stamps
+      vector: np.array containing the vector to be stacked
 
   Returns:
-      A NumPy array with the stacked Qdot0 arrays.
+      A NumPy array with the stacked Qdot0 arrays Qdot0[n,m], with n being num_entries and m the lenght of the given vector
   """
-  qdot_mat = np.vstack([qdot0 for _ in range(num_entries)])
-  return qdot_mat
+  input_mat = np.vstack([vector for _ in range(num_entries)])
+  return input_mat

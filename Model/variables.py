@@ -58,7 +58,7 @@ mdot = np.zeros(len(T_zero))
 Tm = np.zeros(len(T_zero))
 
 mdot[1]=-1
-Tm[2]= 70
+Tm[2]= 20
 
 mdot[7]=1
 Tm[7]=60
@@ -76,7 +76,7 @@ incl_slow_buoyancy=True
 
 
 dt = 60                             # length of the time steps [s]
-num_steps = 150                    # number of time steps to be made
+num_steps = 10                    # number of time steps to be made
 
 
 

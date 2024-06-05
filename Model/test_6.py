@@ -383,7 +383,6 @@ class HeatDistributionVector_model5:
         return sc
 
 
-
 # MODEL 5 - fast buoy (mdot - integrated)
 """tank_vector5 = HeatDistributionVector_model5(alpha, beta_i, beta_bottom, beta_top, lambda_i, phi_i, z, T_a, T_zero, dt, Qdot, mdot, Tm)
 stability5 = tank_vector5.stability_check()
