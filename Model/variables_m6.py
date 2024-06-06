@@ -9,7 +9,7 @@ from functions import create_zero_tuple, create_input_mat
 
 # lenght of the selected T_zero defines the number of layers    
 layers = 10
-"""
+
 T_1 = np.array([10, 10, 10, 10, 10, 90, 90, 90, 90, 90])
 T_1a = np.array([90, 90, 90, 90, 90,10, 10, 10, 10, 10]) 
 T_1b = np.array([90, 90, 10, 10, 10,10, 10, 10, 10, 10]) 
@@ -20,15 +20,19 @@ T_3 = [100, 80, 50, 60, 20, 50, 10, 20, 50, 80]
 T_4 = np.array([100, 90, 80 ,70, 60, 50, 40, 30, 20, 10])
 T_4inv = T_4[::-1]
 
+T_9 = [100,99,98,97,96,95,94,93,92,91]
+T_10 = [40,41,42,43,44,45,44,43,42,41]
+T_10inv= [50,49,48,47,46,45,46,47,48,49]
+
 T_5 = [100, 10, 80 ,200, 60, 70, -10, 30, -10, 10]
 T_6 = np.array([100, 100, 100, 100, 100, 100, 100, 100, 100, 100]) 
 T_7 = np.full(layers, 40) # standard initial temperature
-"""
+
 T_8 = np.full(layers, 40)
 T_a = 20                       # ambient temperature
 
 # tank description
-T_zero = T_8                        # initial temperature vector
+T_zero = T_10                      # initial temperature vector
 z = 2.099                               # height of the tank [m]
 dz = z / len(T_zero)                # height of the section (layer)
 d = 0.79                             # diameter of the cross section [m]
@@ -92,25 +96,27 @@ phi_i = (1/(A_i*rho))
 ""
 
 # 
-number_total_data = 100
+number_total_data = 300
 v0 = np.zeros(len(T_zero))
 mat0 = create_input_mat(number_total_data, v0)  # create matrix filled with 0
 Qdot = np.copy(mat0)
 mdot = np.copy(mat0)
 Tm = np.copy(mat0)
 
+#charging qdot time steps 10-20, i=8
+#Qdot[2:4,8] = 5000
 
 #charging qdot time steps 10-20, i=8
 #Qdot[10:20,8] = 5000
 
-
+"""
 #charging mdot time steps 60-80, i=7
-mdot[60:81,7]=0.5
-Tm[60:81,7]=60
+mdot[0:20,7]=0.7
+Tm[0:20,7]=60
 #mass conservation, leaving the tank in i=2
-mdot[60:81,2]=-0.5
+mdot[0:20,2]=-0.7
 
-
+"""
 """#discharging mdot time steps 30-40, i=2
 mdot[30:41,2]=0.7
 Tm[30:41,6]=20

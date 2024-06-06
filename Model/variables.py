@@ -56,13 +56,13 @@ phi_i = (1/(A_i*rho))
 
 mdot = np.zeros(len(T_zero))
 Tm = np.zeros(len(T_zero))
-
+"""
 mdot[1]=-1
 Tm[2]= 20
 
 mdot[7]=1
 Tm[7]=60
-
+"""
 
 
 # model behaviour

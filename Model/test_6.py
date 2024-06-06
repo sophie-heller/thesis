@@ -41,7 +41,7 @@ def import_variables(file_name):
 file_name = "variables_m6"
 import_variables(file_name)
 # Print the value of alpha immediately after importing
-print("Value of alpha:", alpha)
+#print("Value of alpha:", alpha)
 
 ############### Definitons for the model 5 (integtrated -  direct)
 
@@ -94,10 +94,7 @@ class HeatDistributionVector_model5:
 
         print("Heat diffusivity:", incl_diffusivity) 
         print("Heat losses:",incl_heat_loss)
-        print("Fast Buoyancy, direct charging qdot:",incl_fast_buoyancy_qdot_charge)
-        print("Fast Buoyancy, direct discharging qdot:",incl_fast_buoyancy_qdot_discharge)
-        print("Fast Buoyancy, indirect charging mdot:",incl_fast_buoyancy_mdot_charge)
-        print("Fast Buoyancy, indirect discharging mdot:",incl_fast_buoyancy_mdot_discharge)
+        print("Fast Buoyancy, direct charging qdot:",incl_fast_buoyancy)
         print("Slow Buoyancy:",incl_slow_buoyancy)
 
         # Mass balance:
@@ -124,8 +121,8 @@ class HeatDistributionVector_model5:
             
     
             ####### Separate Qdot into charging and discharging vectors
-            Qdot_charging = np.where(self.Qdot[k*freq].flatten() > 0, self.Qdot[k*freq].flatten(), 0)
-            Qdot_discharging = np.where(self.Qdot[k*freq].flatten() < 0, self.Qdot[k*freq].flatten(), 0)
+            Qdot_charging = np.where(self.Qdot[k*freq] > 0, self.Qdot[k*freq], 0)
+            Qdot_discharging = np.where(self.Qdot[k*freq] < 0, self.Qdot[k*freq], 0)
 
             # Initiate vectors fo the buoyancy qdots
             Qdot_prime_char = np.zeros(self.num_layers)  # initiate vector with length like number of layers
@@ -169,9 +166,9 @@ class HeatDistributionVector_model5:
     
 
             ####### Separate mdot, Tm into charging and discharging elements
-            mdot_in = np.where(self.mdot[k*freq].flatten() > 0, self.mdot[k*freq].flatten(), 0)         # vector with only positive mdots
-            mdot_out = np.where(self.mdot[k*freq].flatten() < 0, self.mdot[k*freq].flatten(), 0)        # vector with only negative mdots
-            Tm_in = np.where(self.Tm[k*freq].flatten() > 0, self.Tm[k*freq].flatten(), 0)             # vector with the temperature of the inflowing (+) streams mdot
+            mdot_in = np.where(self.mdot[k*freq] > 0, self.mdot[k*freq], 0)         # vector with only positive mdots
+            mdot_out = np.where(self.mdot[k*freq] < 0, self.mdot[k*freq], 0)        # vector with only negative mdots
+            Tm_in = np.where(self.Tm[k*freq] > 0, self.Tm[k*freq], 0)             # vector with the temperature of the inflowing (+) streams mdot
 
 
 
@@ -196,7 +193,7 @@ class HeatDistributionVector_model5:
                     den=0                                       # initialize denominator for inspection of heat in layer l in relationship to layer i
 
                     nom= step(Tm_in[l], T_old[i]) #* (Tm_in[l] - T_old[i])                # evaluate if heat transfer is available (1) or not (0) with Step ----- Tl>=Ti -> 1, layer below is hoter than i
-                    print(Tm_in[l], T_old[i])
+                    #print(Tm_in[l], T_old[i])
 
                     for j in range(l, self.num_layers):                     # iterate over layers starting from l and above until top of tank to evaluate the share of heat in layer l (homogenous distribution)
                         den += step(Tm_in[l], T_old[j])                      # sum up to calculate the denominator and thus the share
@@ -240,6 +237,7 @@ class HeatDistributionVector_model5:
 
 
             """
+            
             for i in range(num_layers-1):          # calculate mdot_mix_next between layers, flowing from layer i to i+1. There are num_layers-1 mixing streams
                 mdot_mix_sum = 0 
                 for j in range(0, i+1):                 #inlcude current layer i
@@ -293,7 +291,7 @@ class HeatDistributionVector_model5:
             # assing values
             diffusivity = ((self.alpha) * (T_old_next - (2*T_old) + T_old_prev) / (self.dz**2))     if incl_diffusivity else 0
             heat_loss = (self.beta_i * (self.T_a - T_old))                                          if incl_heat_loss else 0
-            fast_buoyancy_qdot_charge = ((self.lambda_i/self.dz) * Qdot_prime_char)                 if incl_fast_buoyancy else ((self.lambda_i/self.dz) * self.Qdot)
+            fast_buoyancy_qdot_charge = ((self.lambda_i/self.dz) * Qdot_prime_char)                 if incl_fast_buoyancy else ((self.lambda_i/self.dz) * self.Qdot[k*freq])
             fast_buoyancy_qdot_discharge = ((self.lambda_i/self.dz) * Qdot_prime_dischar)           if incl_fast_buoyancy else 0
             fast_buoyancy_mdot_charge = ((self.phi_i/self.dz) * mdot_prime_char)                    if incl_fast_buoyancy else ((self.phi_i/self.dz) * mdot_in * (Tm_in - T_old))
             fast_buoyancy_mdot_discharge = ((self.phi_i/self.dz) * mdot_prime_dischar)              if incl_fast_buoyancy else 0 
@@ -321,7 +319,7 @@ class HeatDistributionVector_model5:
             # separate the effects of the model to allow modularity
             diffusivity_bottom = ((self.alpha) * (T_old[1] - (2*T_old[0]) + T_old[0]) / (self.dz**2))   if incl_diffusivity else 0
             heat_loss_bottom = ((self.beta_i + self.beta_bottom) * (self.T_a - T_old[0]))               if incl_heat_loss else 0
-            fast_buoyancy_qdot_charge_bottom = ((self.lambda_i/self.dz) * Qdot_prime_char[0])           if incl_fast_buoyancy else ((self.lambda_i/self.dz) * self.Qdot[0])
+            fast_buoyancy_qdot_charge_bottom = ((self.lambda_i/self.dz) * Qdot_prime_char[0])           if incl_fast_buoyancy else ((self.lambda_i/self.dz) * self.Qdot[k*freq][0])
             fast_buoyancy_qdot_discharge_bottom = ((self.lambda_i/self.dz) * Qdot_prime_dischar[0])     if incl_fast_buoyancy else 0 
             fast_buoyancy_mdot_charge_bottom = ((self.phi_i/self.dz) * mdot_prime_char[0])              if incl_fast_buoyancy else ((self.phi_i/self.dz) * mdot_in[0] * (Tm_in[0] - T_old[0]))
             fast_buoyancy_mdot_discharge_bottom = ((self.phi_i/self.dz) * mdot_prime_dischar[0])        if incl_fast_buoyancy else 0
@@ -345,7 +343,7 @@ class HeatDistributionVector_model5:
             # separate the effects of the model to allow modularity
             diffusivity_top = ((self.alpha) * (T_old[-1] - (2*T_old[-1]) + T_old[-2]) / (self.dz**2))       if incl_diffusivity else 0
             heat_loss_top = ((self.beta_i + self.beta_top)* (self.T_a - T_old[-1]))                         if incl_heat_loss else 0
-            fast_buoyancy_qdot_charge_top = ((self.lambda_i/self.dz) * Qdot_prime_char[-1])                 if incl_fast_buoyancy else ((self.lambda_i/self.dz) * self.Qdot[-1])
+            fast_buoyancy_qdot_charge_top = ((self.lambda_i/self.dz) * Qdot_prime_char[-1])                 if incl_fast_buoyancy else ((self.lambda_i/self.dz) * self.Qdot[k*freq][-1])
             fast_buoyancy_qdot_discharge_top = ((self.lambda_i/self.dz) * Qdot_prime_dischar[-1])           if incl_fast_buoyancy else 0 
             fast_buoyancy_mdot_charge_top = ((self.phi_i/self.dz) * mdot_prime_char[-1])                    if incl_fast_buoyancy else ((self.phi_i/self.dz) * mdot_in[-1] * (Tm_in[-1] - T_old[1]))
             fast_buoyancy_mdot_discharge_top = ((self.phi_i/self.dz) * mdot_prime_dischar[-1])              if incl_fast_buoyancy else 0
@@ -384,34 +382,32 @@ class HeatDistributionVector_model5:
 
 
 # MODEL 5 - fast buoy (mdot - integrated)
-"""tank_vector5 = HeatDistributionVector_model5(alpha, beta_i, beta_bottom, beta_top, lambda_i, phi_i, z, T_a, T_zero, dt, Qdot, mdot, Tm)
-stability5 = tank_vector5.stability_check()
-if (stability5 == 0):
+"""tank_vector5o = HeatDistributionVector_model5(alpha, beta_i, beta_bottom, beta_top, lambda_i, phi_i, z, T_a, T_zero, dt, Qdot, mdot, Tm)
+stability5o = tank_vector5o.stability_check()
+if (stability5o == 0):
     # Solve for the temperatures
-    final_temperature5, results5 = tank_vector5.vector_solve(num_steps, 
-                                                             incl_diffusivity=incl_diffusivity,
-                                                             incl_heat_loss=incl_heat_loss,
-                                                             incl_fast_buoyancy_qdot_charge=incl_fast_buoyancy_qdot_charge,
-                                                             incl_fast_buoyancy_qdot_discharge=incl_fast_buoyancy_qdot_discharge,
-                                                             incl_fast_buoyancy_mdot_charge=incl_fast_buoyancy_mdot_charge,
-                                                             incl_fast_buoyancy_mdot_discharge=incl_fast_buoyancy_mdot_discharge,
-                                                             incl_slow_buoyancy=incl_slow_buoyancy)
+    final_temperature5o, results5o = tank_vector5o.vector_solve(num_steps, 
+                                                                incl_diffusivity=False,
+                                                                incl_heat_loss=False,
+                                                                incl_fast_buoyancy=False,
+                                                                incl_slow_buoyancy=False)
     # Plot the results
-    plot_results_height(results5, tank_vector5.heights, dt, z, dz, "Layer temperatures over tank height. M5: integrated direct charging")
-    #plot_results_time(results4, dt, "M4: fast buoyancy (only indirect charging), Temperature development of each layer over time.)")
-"""
+    plot_results_height(results5o, tank_vector5o.heights, dt, z, dz, "Layer temperatures over tank height. M5o: integrated direct charging")"""
+
+
+
 
 tank_vector5 = HeatDistributionVector_model5(alpha, beta_i, beta_bottom, beta_top, lambda_i, phi_i, z, T_a, T_zero, dt, Qdot, mdot, Tm)
 stability5 = tank_vector5.stability_check()
 if (stability5 == 0):
     # Solve for the temperatures
     final_temperature5, results5 = tank_vector5.vector_solve(num_steps, 
-                                                             incl_diffusivity=True,
-                                                             incl_heat_loss=False,
-                                                             incl_fast_buoyancy=True,
-                                                             incl_slow_buoyancy=False)
+                                                             incl_diffusivity=False,
+                                                             incl_heat_loss=True,
+                                                             incl_fast_buoyancy=False,
+                                                             incl_slow_buoyancy=True)
     # Plot the results
     plot_results_height(results5, tank_vector5.heights, dt, z, dz, "Layer temperatures over tank height. M5: integrated direct charging")
-    #plot_results_time(results4, dt, "M4: fast buoyancy (only indirect charging), Temperature development of each layer over time.)")
+    plot_results_time(results5, dt, "M4: fast buoyancy (only indirect charging), Temperature development of each layer over time.)")
 
 
