@@ -89,45 +89,38 @@ phi_i = (1/(A_i*rho))
 
 # Display the modified Qdot_mat
 #print("Modified Qdot_mat:\n", Qdot_mat)
+""
 
-
-
-number_total_data = 10
+# 
+number_total_data = 100
 v0 = np.zeros(len(T_zero))
 mat0 = create_input_mat(number_total_data, v0)  # create matrix filled with 0
-
 Qdot = np.copy(mat0)
-Qdot[2:4,2] = 5000
-
-
 mdot = np.copy(mat0)
-mdot[5:7,7]=-1
-mdot[5:7,6]=0.5
-mdot[5:7,2] = 0.5
-
-
 Tm = np.copy(mat0)
-Tm[5:7,7]=60
-Tm[5:7,6]=80
-Tm[5:7,2] = 20 
 
 
-
-#mdot_mat = np.vstack((mdot0, mdot_an, mdot_an, mdot0, mdot0, mdot0, mdot0, mdot_an, mdot_an, mdot0))
-
-
-# model behaviour
-incl_diffusivity=True,
-incl_heat_loss=True,
-incl_fast_buoyancy_qdot_charge=False,
-incl_fast_buoyancy_qdot_discharge=True,
-incl_fast_buoyancy_mdot_charge=False,
-incl_fast_buoyancy_mdot_discharge=False,
-incl_slow_buoyancy=False
+#charging qdot time steps 10-20, i=8
+#Qdot[10:20,8] = 5000
 
 
+#charging mdot time steps 60-80, i=7
+mdot[60:81,7]=0.5
+Tm[60:81,7]=60
+#mass conservation, leaving the tank in i=2
+mdot[60:81,2]=-0.5
+
+
+"""#discharging mdot time steps 30-40, i=2
+mdot[30:41,2]=0.7
+Tm[30:41,6]=20
+#mass conservation, leaving the tank in i=8
+mdot[30:41,8]=-0.7"""
+
+
+""
 dt = 60                             # length of the time steps [s]
-num_steps = 10                    # number of time steps to be made
+num_steps = number_total_data                    # number of time steps to be made
 
 
 
