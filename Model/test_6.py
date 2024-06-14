@@ -128,128 +128,126 @@ class HeatDistributionVector_model5:
             Qdot_prime_char = np.zeros(self.num_layers)  # initiate vector with length like number of layers
             Qdot_prime_dischar = np.zeros(self.num_layers)  # initiate vector with length like number of layers
 
-            for i in range(self.num_layers):                    # iterate over all layers to calculate the actual heat of each layer Qdot_prime_char[0, 1, 2...]
-                
-                # INDIRECT CHARGING: Calculate Qdot_prime_char, the actual amount of heat transferred to layer i through heat exchange in and below layer i (due to buoyancy)
-                Qdot_sum_char = 0                                    # initiale the sum factor for calculating Qdot_prime_charge i
+            ####### Separate mdot into incoming and outgoing vectors, only incoming can charge/discharge
+            mdot_in = np.where(self.mdot[k*freq] > 0, self.mdot[k*freq], 0)         # vector with only positive mdots
+            mdot_out = np.where(self.mdot[k*freq] < 0, self.mdot[k*freq], 0)        # vector with only negative mdots
+            Tm_in = np.where(self.mdot[k*freq] > 0, self.Tm[k*freq], 0)             # vector with the temperature of the inflowing (+) streams mdot
 
-                for l in range(i+1):                            # iterate l from bottom layer (o) until current layer i (incl) to evaluate how heat inserted below in l affects layer i if buoyancy is present
-                    nom=0                                           # initialize nominator for inspection of heat in layer l in relationship to layer i
-                    den=0                                       # initialize denominator for inspection of heat in layer l in relationship to layer i
+        
+            # Initiate matrices with layer infos
+            matrix_l = np.tile(T_old, (len(T_old), 1))      # create matrix with T as columns for len(T) rows (T_i const as row)
+            matrix_i = matrix_l.T                           # create matrix with T as row for len(T) columns (T_l const as column)
+            matrix_Tm = np.tile(Tm_in, (len(Tm_in), 1))      # create matrix with Tm as columns for len(T) rows (Tm_l const as row)
 
-                    nom= step(T_old[l], T_old[i])                # evaluate if heat transfer is available (1) or not (0) with Step ----- Tl>=Ti -> 1, layer below is hoter than i
+            ######## INDIRECT (Qdot)
+            ##########################
+            # Initiate vectors fo the buoyancy qdots
+            Qdot_prime_char = np.zeros(self.num_layers)  # initiate vector with length like number of layers
+            Qdot_prime_dischar = np.zeros(self.num_layers)  # initiate vector with length like number of layers
 
-                    for j in range(l, self.num_layers):       # iterate over layers starting from l and above until top of tank to evaluate the share of heat in layer l (homogenous distribution)
-                        den += step(T_old[l], T_old[j])          # sum up to calculate the denominator and thus the share
-                    den = np.where(den == 0, 1, den)                  # prevent divisions by 0     
-                    Qdot_sum_char += Qdot_charging[l] * nom / den    # amount of heat transfered to layer i is the sum of all heat below layer i and its share that have buoyancy effects    
-                    
-                Qdot_prime_char[i] = Qdot_sum_char
+            ####
+            # Indir CHARGING
+            matrix_bool_qchar = np.where(matrix_l >= matrix_i, 1, 0) # check availability of heat exchange to the layer i from layer l
+
+            # Selecting the bottom left half (diagonal) of the result_matrix (only layers below i matter)
+            matrix_nom_qchar = np.tril(matrix_bool_qchar)
+            # Sum the values in each column, this is the denominator for the factor by which Ql will be multiplied
+            den_sums_qchar = np.sum(matrix_nom_qchar, axis=0)  # axis 0 are columns
+            # calculate the facor (distirbution of Ql)
+            factor_qchar = np.where(den_sums_qchar != 0, 1 / den_sums_qchar, 0)   # calculate 1/sum, prevent division by 0
+            # Nom * Den for each matrix element
+            matrix_factor_qchar = matrix_nom_qchar * factor_qchar
+            # Multiply the factor matrix with the Qdot vector
+            matrix_qchar = matrix_factor_qchar * Qdot_charging
+            # The total amount of Qdot_prime for each layer is the sum of the rows of matrix_char
+            Qdot_prime_char = np.sum(matrix_qchar, axis=1)   # axis 1 are rows
 
 
-                # INDIRECT DISCHARGING: Calculate Qdot_prime_dischar, the actual amount of heat transferred to the layer i thorugh heat exchange in layers in and above i (due to buoyancy)
-                Qdot_sum_dischar = 0                                    # initiale the sum factor for calculating Qdot_prime_charge i
 
-                for l in range(i, self.num_layers):                            # iterate l from bottom layer (o) until current layer i (incl) to evaluate how heat inserted below in l affects layer i if buoyancy is present
-                    nom=0                                           # initialize nominator for inspection of heat in layer l in relationship to layer i
-                    den=0                                       # initialize denominator for inspection of heat in layer l in relationship to layer i
+            ####
+            # Indir DISCHARGING
+            matrix_bool_qdischar = np.where(matrix_i >= matrix_l, 1, 0) # check availability of heat exchange to the layer i from layer l
+            # Selecting the top right half (diagonal) of the result_matrix (only layers above i matter)
+            matrix_nom_qdischar = np.triu(matrix_bool_qdischar)
 
-                    nom= step(T_old[i], T_old[l])                # evaluate if heat transfer is available (1) or not (0) with Step ----- Tl>=Ti -> 1, layer below is hoter than i
+            # Sum the values in each column, this is the denominator for the factor by which Ql will be multiplied
+            den_sums_qdischar = np.sum(matrix_nom_qdischar, axis=0)  # axis 0 are columns
+            # calculate the facor (distirbution of Ql)
+            factor_qdischar = np.where(den_sums_qdischar != 0, 1 / den_sums_qdischar, 0)   # calculate 1/sum, prevent division by 0
+            # Nom * Den for each matrix element
+            matrix_factor_qdischar = matrix_nom_qdischar * factor_qdischar
+            # Multiply the factor matrix with the Qdot vector
+            matrix_qdischar = matrix_factor_qdischar * Qdot_discharging
+            # The total amount of Qdot_prime for each layer is the sum of the rows of matrix_char
+            Qdot_prime_dischar = np.sum(matrix_qdischar, axis=1)   # axis 1 are rows
 
-                    for j in range(l+1):       # iterate over layers starting from l and above until top of tank to evaluate the share of heat in layer l (homogenous distribution)
-                        den += step(T_old[j], T_old[l])          # sum up to calculate the denominator and thus the share
-                    den = np.where(den == 0, 1, den)                  # prevent divisions by 0     
-                    Qdot_sum_dischar += Qdot_discharging[l] * nom / den    # amount of heat transfered to layer i is the sum of all heat below layer i and its share that have buoyancy effects    
-                    
-                Qdot_prime_dischar[i] = Qdot_sum_dischar
             
     
 
             ####### Separate mdot, Tm into charging and discharging elements
             mdot_in = np.where(self.mdot[k*freq] > 0, self.mdot[k*freq], 0)         # vector with only positive mdots
             mdot_out = np.where(self.mdot[k*freq] < 0, self.mdot[k*freq], 0)        # vector with only negative mdots
-            Tm_in = np.where(self.Tm[k*freq] > 0, self.Tm[k*freq], 0)             # vector with the temperature of the inflowing (+) streams mdot
+            Tm_in = np.where(self.mdot[k*freq] > 0, self.Tm[k*freq], 0)             # vector with the temperature of the inflowing (+) streams mdot
 
-
-
-        
             #
             mdot_prime_char = np.zeros(self.num_layers)  # initiate vector: the amount of mdot prime (temperature change) per i will be saved here
             mdot_in_char_tot = np.zeros(self.num_layers)    # initiate vector: the total amount of mass streaming into i through charging mdots in l will be saved here
             mdot_prime_dischar = np.zeros(self.num_layers)  # initiate vector with length like number of layers
             mdot_in_dischar_tot = np.zeros(self.num_layers)    # initiate vector: the total amount of mass streaming into i through discharging mdots in l will be saved here
-
-            #
             mdot_in_tot = np.zeros(self.num_layers)            # initiate vector: total amount of mdot flowing into layer i (charge+discharge incl buoyancy)
 
-            for i in range(self.num_layers):                    # iterate over all layers to calculate the actual heat of each layer Qdot_prime_char[0, 1, 2...]
-                # DIRECT CHARGING OF LAYER i: entering hot stream
-                mdot_sum_char = 0                                    # initiale the sum factor for calculating Qdot_prime_charge i
-                mdot_in_char = 0
-                mdot_in_char_sum = 0
+            
+            # dir CHARGING
+            matrix_diff_mchar = matrix_Tm - matrix_i
+            #matrix_diff_mchar = np.where(matrix_diff_mchar == -0, 0, matrix_diff_mchar)
+            matrix_bool_mchar = np.tril(np.where(matrix_diff_mchar > 0, 1, 0)) # check availability of heat exchange to the layer i from layer l
+            # Selecting the bottom left half (diagonal) of the result_matrix (only layers below i matter)
+            matrix_nom_mchar = matrix_bool_mchar * matrix_diff_mchar # Tm - Ti (diff) as nominator for bool=1, 0 for bool=0
+            matrix_nom_mchar = np.where(matrix_nom_mchar == -0.0, 0.0, matrix_nom_mchar)
+            # Distribution of mdot_l: Sum the values in each column, this is the denominator for the factor by which mdotl will be multiplied
+            den_sums_mchar = np.sum(matrix_bool_mchar, axis=0)  # axis 0 are columns
+            # calculate the factor (distirbution of mdot_l)
+            # Calculate the distribution factor, handling division by zero
+            #factor_mchar = np.divide(1, den_sums_mchar, where=den_sums_mchar != 0, out=np.zeros_like(den_sums_mchar))
+            den_sums_mchar_one = np.where(den_sums_mchar == 0, 1, den_sums_mchar)
+            factor_mchar = 1/den_sums_mchar_one#np.where(den_sums_mchar == 0, 0, (1 / den_sums_mchar))   # calculate 1/sum, prevent division by 0
+            # Nom * Den for each matrix element
+            matrix_bool_factor_mchar = matrix_bool_mchar * factor_mchar
+            mdot_in_char_tot = np.sum(matrix_bool_factor_mchar*mdot_in, axis=1)
+            matrix_factor_mchar = matrix_nom_mchar * factor_mchar
+            # Multiply the factor matrix with the mdot vector
+            matrix_mchar = matrix_factor_mchar * mdot_in
+            # The total amount of mdot_prime for each layer is the sum of the rows of matrix_char
 
-                for l in range(i+1):                            # iterate l from bottom layer (o) until current layer i (incl) to evaluate how heat inserted below in l affects layer i if buoyancy is present
-                    nom=0                                           # initialize nominator for inspection of heat in layer l in relationship to layer i
-                    den=0                                       # initialize denominator for inspection of heat in layer l in relationship to layer i
+            mdot_prime_char = np.sum(matrix_mchar, axis=1)   # axis 1 are rows""""M4 Debugger.py"""
 
-                    nom= step(Tm_in[l], T_old[i]) #* (Tm_in[l] - T_old[i])                # evaluate if heat transfer is available (1) or not (0) with Step ----- Tl>=Ti -> 1, layer below is hoter than i
-                    #print(Tm_in[l], T_old[i])
+            # dir DISCHARGING
+            matrix_diff_mdischar = matrix_Tm - matrix_i
+            matrix_bool_mdischar = np.triu(np.where(matrix_diff_mdischar < 0, 1, 0)) # check availability of heat exchange to the layer i from layer Tm l
+            # Selecting the top right half (diagonal) of the result_matrix (only layers above i matter)
+            matrix_nom_mdischar = matrix_bool_mdischar*matrix_diff_mdischar # check availability of heat exchange to the layer i from layer l
+            # Distribution of mdot_l: Sum the values in each column, this is the denominator for the factor by which mdotl will be multiplied
+            den_sums_mdischar = np.sum(matrix_bool_mdischar, axis=0)  # axis 0 are columns
+            # calculate the factor (distirbution of mdot_l)
+            den_sums_mdischar_one = np.where(den_sums_mdischar == 0, 1, den_sums_mdischar)
+            factor_mdischar = 1/den_sums_mdischar_one #np.where(den_sums_mchar == 0, 0, (1 / den_sums_mchar))   # calculate 1/sum, prevent division by 0
+            # Nom * Den for each matrix element
+            matrix_bool_factor_mdischar = matrix_bool_mdischar * factor_mdischar
+            mdot_in_dischar_tot = np.sum(matrix_bool_factor_mdischar*mdot_in, axis=1)
+            matrix_factor_mdischar = matrix_nom_mdischar * factor_mdischar
+            # Multiply the factor matrix with the mdot vector
+            matrix_mdischar = matrix_factor_mdischar * mdot_in
+            # The total amount of mdot_prime for each layer is the sum of the rows of matrix_char
 
-                    for j in range(l, self.num_layers):                     # iterate over layers starting from l and above until top of tank to evaluate the share of heat in layer l (homogenous distribution)
-                        den += step(Tm_in[l], T_old[j])                      # sum up to calculate the denominator and thus the share
-                    den = np.where(den == 0, 1, den)                         # prevent divisions by 0    
-                    mdot_in_char = mdot_in[l] * (nom / den)           # how much of the stream l is affecting i? 
-                    mdot_in_char_sum += mdot_in_char                        # how much mass has flowed into i through all layers l?
-                    mdot_sum_char += mdot_in_char * (Tm_in[l] - T_old[i])    # amount of heat transfered to layer i is the sum of all heat below layer i and its share that have buoyancy effects    
-                
-                #print(f"i={i}, l={l}, mdot_in_char_sum={mdot_in_char_sum}, mdot_in_char={mdot_in_char}, nom={nom}, den={den}")
-
-                mdot_in_char_tot[i] = mdot_in_char_sum                      # total amount of mdot charging flowing into layer i including buoyancy of all layers
-                mdot_prime_char[i] = mdot_sum_char                          # total change in temperature of layer i (mdot times the Tm of stream in l) from mdot charging flowing into layer i including buoyancy of all layers
-                
-
-                # DIRECT DISCHARGING OF LAYER i: entering hot stream
-                mdot_sum_dischar = 0                                    # initiale the sum factor for calculating Qdot_prime_charge i
-                mdot_in_dischar = 0
-                mdot_in_dischar_sum = 0
-
-                for l in range(i, self.num_layers):                            # iterate l from bottom layer (o) until current layer i (incl) to evaluate how heat inserted below in l affects layer i if buoyancy is present
-                    nom=0                                           # initialize nominator for inspection of heat in layer l in relationship to layer i
-                    den=0                                       # initialize denominator for inspection of heat in layer l in relationship to layer i
-
-                    nom= step(T_old[i], Tm_in[l])# * (Tm_in[l] - T_old[i])                # evaluate if heat transfer is available (1) or not (0) with Step ----- Tl>=Ti -> 1, layer below is hoter than i
-
-                    for j in range(l+1):       # iterate over layers starting from l and above until top of tank to evaluate the share of heat in layer l (homogenous distribution)
-                        den += step(T_old[j], Tm_in[l])          # sum up to calculate the denominator and thus the share
-                    den = np.where(den == 0, 1, den)                  # prevent divisions by 0    
-                    mdot_in_dischar = mdot_in[l] * nom / den
-                    mdot_in_dischar_sum += mdot_in_dischar
-                    mdot_sum_dischar += mdot_in_dischar * (Tm_in[l] - T_old[i])    # amount of heat transfered to layer i is the sum of all heat below layer i and its share that have buoyancy effects    
-                
-                mdot_in_dischar_tot[i] = mdot_in_dischar_sum  
-                mdot_prime_dischar[i] = mdot_sum_dischar
-                
-                mdot_in_tot[i] = mdot_in_char_tot[i] + mdot_in_dischar_tot[i] # total amount of mdot flowing into layer i inlcuding buoyancy effects
-
+            mdot_prime_dischar = np.sum(matrix_mdischar, axis=1)   # axis 1 are rows"""
 
             # Calculate mdot mix_in for layer i. Positive means from below to above (i-1 -> i). i=0 is 0 (outside of tank) and i=N+1= 0 (outside of tank)
             mdot_mix_in = np.zeros(self.num_layers+1)
+            mdot_in_tot = mdot_in_dischar_tot + mdot_in_dischar_tot
 
 
-            """
-            
-            for i in range(num_layers-1):          # calculate mdot_mix_next between layers, flowing from layer i to i+1. There are num_layers-1 mixing streams
-                mdot_mix_sum = 0 
-                for j in range(0, i+1):                 #inlcude current layer i
-                    mdot_mix = 0
-                    mdot_mix = mdot_in[j] - mdot_out[j]
-                    mdot_mix_sum += mdot_mix
-                    
-                mdot_mix_in[i+1] = mdot_mix_sum
 
-            print(mdot_mix_in)
-            """
-
+            #### Vectorial for mix
             # Calculate cumulative sum of the differences of the incoming - outgoing streams in each layer
             mdot_diff = mdot_in_tot + mdot_out                              # difference of incoming streams (distributed by buoyancy) and outgoing streams (negative in their value)
             cumulative_mdot_diff = np.cumsum(mdot_diff)                     # vector containing the cummulation of the sums of the net streams flowing out of the layers below
@@ -259,7 +257,7 @@ class HeatDistributionVector_model5:
 
             # Initiate vector for resulting mdot_prime
             mdot_prime_mix = np.zeros(self.num_layers)
-
+            
             # take only the inflowing streams for each layer into account
             for i in range(self.num_layers):
                 mdot_prime_mix_in_above = 0
@@ -272,7 +270,7 @@ class HeatDistributionVector_model5:
                     mdot_prime_mix_below = (mdot_mix_in[i]) * (T_old[i - 1] - T_old[i])
                     
                 mdot_prime_mix[i] += mdot_prime_mix_in_above + mdot_prime_mix_below    # total amount of heat portion that will affect each layer by incoming and outflowing mass flows from forced streaming (direct charging/discharging)                        
-
+            
                 
             #print(f"mdot_prime_mix{mdot_prime_mix}")       
 
@@ -295,8 +293,8 @@ class HeatDistributionVector_model5:
             fast_buoyancy_qdot_discharge = ((self.lambda_i/self.dz) * Qdot_prime_dischar)           if incl_fast_buoyancy else 0
             fast_buoyancy_mdot_charge = ((self.phi_i/self.dz) * mdot_prime_char)                    if incl_fast_buoyancy else ((self.phi_i/self.dz) * mdot_in * (Tm_in - T_old))
             fast_buoyancy_mdot_discharge = ((self.phi_i/self.dz) * mdot_prime_dischar)              if incl_fast_buoyancy else 0 
-            slow_buoyancy = (0.5 * ((1/10) * np.logaddexp(0, 10 * (T_old_prev - T_old)))                
-                            - 0.5 * ((1/10) * np.logaddexp(0, 10 * (T_old - T_old_next))))          if incl_slow_buoyancy else 0
+            slow_buoyancy = ((0.5 * np.maximum(0,(T_old_prev - T_old)))                
+                            - (0.5 * np.maximum(0,(T_old - T_old_next))))                                if incl_slow_buoyancy else 0
             mix_mdot_internal = ((self.phi_i/self.dz) * mdot_prime_mix)
             
             
@@ -324,7 +322,7 @@ class HeatDistributionVector_model5:
             fast_buoyancy_mdot_charge_bottom = ((self.phi_i/self.dz) * mdot_prime_char[0])              if incl_fast_buoyancy else ((self.phi_i/self.dz) * mdot_in[0] * (Tm_in[0] - T_old[0]))
             fast_buoyancy_mdot_discharge_bottom = ((self.phi_i/self.dz) * mdot_prime_dischar[0])        if incl_fast_buoyancy else 0
             mix_mdot_internal_bottom = ((self.phi_i/self.dz) * mdot_prime_mix[0])
-            slow_buoyancy_bottom = (- 0.5 * ((1/10) * np.logaddexp(0, 10 * (T_old[0] - T_old[1]))))     if incl_slow_buoyancy else 0
+            slow_buoyancy_bottom = (- 0.5 * np.maximum(0,(T_old[0] - T_old[1])))     if incl_slow_buoyancy else 0
             
             T_new[0] = (T_old[0]
                      + (diffusivity_bottom
@@ -348,7 +346,7 @@ class HeatDistributionVector_model5:
             fast_buoyancy_mdot_charge_top = ((self.phi_i/self.dz) * mdot_prime_char[-1])                    if incl_fast_buoyancy else ((self.phi_i/self.dz) * mdot_in[-1] * (Tm_in[-1] - T_old[1]))
             fast_buoyancy_mdot_discharge_top = ((self.phi_i/self.dz) * mdot_prime_dischar[-1])              if incl_fast_buoyancy else 0
             mix_mdot_internal_top = ((self.phi_i/self.dz) * mdot_prime_mix[-1])
-            slow_buoyancy_top = (0.5 * ((1/10) * np.logaddexp(0, 10 * (T_old[-2] - T_old[-1]))))            if incl_slow_buoyancy else 0
+            slow_buoyancy_top = (0.5 * np.maximum(0,((T_old[-2] - T_old[-1]))))            if incl_slow_buoyancy else 0
             
             T_new[-1] = (T_old[-1]
                      + (diffusivity_top
@@ -402,9 +400,9 @@ stability5 = tank_vector5.stability_check()
 if (stability5 == 0):
     # Solve for the temperatures
     final_temperature5, results5 = tank_vector5.vector_solve(num_steps, 
-                                                             incl_diffusivity=False,
+                                                             incl_diffusivity=True,
                                                              incl_heat_loss=True,
-                                                             incl_fast_buoyancy=False,
+                                                             incl_fast_buoyancy=True,
                                                              incl_slow_buoyancy=True)
     # Plot the results
     plot_results_height(results5, tank_vector5.heights, dt, z, dz, "Layer temperatures over tank height. M5: integrated direct charging")
