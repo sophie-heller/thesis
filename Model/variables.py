@@ -25,7 +25,7 @@ T_8 = np.full(layers, 40)
 T_a = 20                       # ambient temperature
 
 # tank description
-T_zero = T_8                        # initial temperature vector
+T_zero = np.array([100, 90, 80 ,70, 60, 50, 40, 30, 20, 10])                  # initial temperature vector
 z = 2.099                               # height of the tank [m]
 dz = z / len(T_zero)                # height of the section (layer)
 d = 0.79                             # diameter of the cross section [m]
@@ -56,13 +56,13 @@ phi_i = (1/(A_i*rho))
 
 mdot = np.zeros(len(T_zero))
 Tm = np.zeros(len(T_zero))
-"""
-mdot[1]=-1
-Tm[2]= 20
 
 mdot[7]=1
-Tm[7]=60
-"""
+Tm[7]= 80
+
+mdot[2]=-1
+#Tm[7]=60
+
 
 
 # model behaviour

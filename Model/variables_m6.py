@@ -28,6 +28,7 @@ T_7 = np.full(layers, 40) # standard initial temperature"""
 
 T_8 = np.full(layers, 40)
 T_4 = np.array([100, 90, 80 ,70, 60, 50, 40, 30, 20, 10])
+T_9 = [70,69,68,67,66,65,64,63,62,61]
 T_4inv = T_4[::-1]
 
 T_small = np.array([5,6,3,4])
@@ -35,7 +36,7 @@ T_small = np.array([5,6,3,4])
 T_a = 20                       # ambient temperature
 
 # tank description
-T_zero = T_4                      # initial temperature vector
+T_zero = T_9                      # initial temperature vector
 z = 2.099                               # height of the tank [m]
 dz = z / len(T_zero)                # height of the section (layer)
 d = 0.79                             # diameter of the cross section [m]
@@ -61,7 +62,7 @@ lambda_i = (1/(A_i*rho*cp))         # coefficient of the input heat
 phi_i = (1/(A_i*rho))
 
 # 
-number_total_data = 100
+number_total_data = 10
 v0 = np.zeros(len(T_zero))
 mat0 = create_input_mat(number_total_data, v0)  # create matrix filled with 0
 Qdot = np.copy(mat0)
@@ -80,7 +81,7 @@ mdot[:,7]=1
 Tm[:,7]=80
 #mass conservation, leaving the tank in i=2
 
-mdot[:,3]=-1
+mdot[:,2]=-1
 
 
 #discharging mdot time steps 30-40, i=2
@@ -90,7 +91,7 @@ mdot[:,3]=-1
 #mdot[0:number_total_data,8]=-0.7
 
 
-""
+
 dt = 60                             # length of the time steps [s]
 num_steps = number_total_data                    # number of time steps to be made
 
